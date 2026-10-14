@@ -63,27 +63,59 @@ export async function POST(request: NextRequest) {
 // Add this at the bottom of src/app/api/projects/route.ts
 
 // This handler listens for incoming GET requests to fetch all registered projects
+// Replace the GET function at the bottom of src/app/api/projects/route.ts
+
 export async function GET() {
   try {
-    // 1. Connect to MongoDB and fetch the active client singleton
     const client = await clientPromise;
     const db = client.db("stacktrim");
 
-    // 2. Query the "projects" collection, find all documents, and convert them to an array
-    const projects = await db
-      .collection<IProject>("projects")
-      .find({})
-      .sort({ createdAt: -1 }) // Sort by newest created first
+    // Advanced High-Level System Aggregation Pipeline
+    const projectsWithMetrics = await db
+      .collection("projects")
+      .aggregate([
+        {
+          // 1. Perform a relational Left Outer Join to link the metrics collection
+          $lookup: {
+            from: "metrics",
+            localField: "_id",
+            foreignField: "projectId",
+            as: "performanceLogs",
+          },
+        },
+        {
+          // 2. Compute mathematical summaries across all time-series documents per project
+          $addFields: {
+            totalComputeCost: { $sum: "$performanceLogs.computeCostUSD" },
+            avgExecutionTime: { $avg: "$performanceLogs.executionTimeMs" },
+            errorCount: {
+              $size: {
+                $filter: {
+                  input: "$performanceLogs",
+                  as: "log",
+                  cond: { $eq: ["$$log.isError", true] },
+                },
+              },
+            },
+          },
+        },
+        {
+          // 3. Remove the massive raw log arrays to keep the network payload light
+          $project: {
+            performanceLogs: 0,
+          },
+        },
+        { $sort: { createdAt: -1 } },
+      ])
       .toArray();
 
-    // 3. Return the array of documents to the client
     return NextResponse.json({
       success: true,
-      count: projects.length,
-      data: projects,
+      count: projectsWithMetrics.length,
+      data: projectsWithMetrics,
     });
   } catch (error: any) {
-    console.error("API Project Fetch Error:", error);
+    console.error("Aggregation Pipeline Error:", error);
     return NextResponse.json(
       {
         success: false,

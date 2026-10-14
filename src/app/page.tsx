@@ -1,4 +1,3 @@
-// src/app/page.tsx (Segment 1 of 3)
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +8,9 @@ interface Project {
   cloudProvider: string;
   status: string;
   createdAt: string;
+  totalComputeCost?: number;
+  avgExecutionTime?: number;
+  errorCount?: number;
 }
 
 export default function InteractiveDashboard() {
@@ -75,7 +77,6 @@ export default function InteractiveDashboard() {
       setSubmitting(false);
     }
   };
-  // src/app/page.tsx (Segment 2 of 3)
   return (
     <main className="min-h-screen bg-[#FDFBF7] text-stone-800 font-sans antialiased relative overflow-hidden selection:bg-orange-200 selection:text-orange-900">
       {/* Background Grids */}
@@ -96,7 +97,7 @@ export default function InteractiveDashboard() {
             </h1>
             <p className="text-stone-500 mt-2 text-sm max-w-xl">
               Autonomous cloud cost monitoring engine running agentic AI
-              diagnostic code repairs.
+              infrastructure diagnostic repairs.
             </p>
           </div>
 
@@ -106,7 +107,7 @@ export default function InteractiveDashboard() {
                 Cloud Waste Audit
               </p>
               <p className="text-xl font-black text-stone-900 mt-0.5">
-                $0.00{" "}
+                \$0.00{" "}
                 <span className="text-xs font-normal text-stone-500">
                   saved
                 </span>
@@ -123,6 +124,7 @@ export default function InteractiveDashboard() {
             </div>
           </div>
         </header>
+
         {/* Dashboard Clusters Container */}
         <section>
           <div className="flex items-center justify-between mb-8">
@@ -174,7 +176,11 @@ export default function InteractiveDashboard() {
                           {project.name}
                         </h3>
                         <p className="text-[11px] font-mono text-stone-400 mt-1">
-                          ID: {project._id.substring(0, 8)}...
+                          ID:{" "}
+                          {project._id
+                            ? project._id.substring(0, 8)
+                            : "loading"}
+                          ...
                         </p>
                       </div>
                       <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-md border border-orange-100 bg-[#FFFDF9] text-orange-800 uppercase tracking-wider">
@@ -182,14 +188,58 @@ export default function InteractiveDashboard() {
                       </span>
                     </div>
 
-                    <div className="space-y-3 border-t border-stone-50 pt-4 mb-5">
+                    {/* Infrastructure Auditing Visual Analytics */}
+                    <div className="space-y-3.5 border-t border-stone-50 pt-4 mb-5">
+                      <div className="grid grid-cols-2 gap-3 text-center">
+                        <div className="bg-[#FFFDF9] border border-orange-100/50 p-2 rounded-xl">
+                          <p className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">
+                            Avg Latency
+                          </p>
+                          <p className="text-sm font-black text-stone-800 mt-0.5">
+                            {project.avgExecutionTime
+                              ? `${Math.round(project.avgExecutionTime)}ms`
+                              : "0ms"}
+                          </p>
+                        </div>
+                        <div className="bg-[#FFFDF9] border border-orange-100/50 p-2 rounded-xl">
+                          <p className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">
+                            Matured Bill
+                          </p>
+                          <p className="text-sm font-black text-orange-600 mt-0.5">
+                            {project.totalComputeCost
+                              ? `$${project.totalComputeCost.toFixed(4)}`
+                              : "\$0.0000"}
+                          </p>
+                        </div>
+                      </div>
+
                       <div>
-                        <div className="flex justify-between text-[10px] font-mono font-bold text-stone-400 mb-1">
-                          <span>RESOURCE UTILIZATION</span>
-                          <span className="text-orange-600">OPTIMAL</span>
+                        <div className="flex justify-between text-[10px] font-mono font-bold mb-1">
+                          <span className="text-stone-400">
+                            ANOMALY LOG DETECTIONS
+                          </span>
+                          <span
+                            className={
+                              project.errorCount && project.errorCount > 0
+                                ? "text-rose-600 font-black animate-pulse"
+                                : "text-emerald-600 font-bold"
+                            }
+                          >
+                            {project.errorCount && project.errorCount > 0
+                              ? `${project.errorCount} CRASHES`
+                              : "NO ISSUES"}
+                          </span>
                         </div>
                         <div className="w-full h-1.5 bg-stone-50 rounded-full overflow-hidden p-[1px] border border-stone-100">
-                          <div className="w-[78%] h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full" />
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${project.errorCount && project.errorCount > 0 ? "bg-rose-500" : "bg-gradient-to-r from-orange-400 to-amber-500"}`}
+                            style={{
+                              width:
+                                project.errorCount && project.errorCount > 0
+                                  ? `${Math.min(project.errorCount * 15, 100)}%`
+                                  : "100%",
+                            }}
+                          />
                         </div>
                       </div>
                     </div>

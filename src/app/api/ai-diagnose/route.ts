@@ -1,7 +1,7 @@
 // src/app/api/ai-diagnose/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { groq } from "@ai-sdk/groq"; // Natively targeted Groq provider import
+import { groq } from "@ai-sdk/groq";
 import { generateText } from "ai";
 import clientPromise from "../../../lib/mongodb";
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Gather stats data from MongoDB metrics tables
+    // 1. Fetch our target application metadata entry document from MongoDB
     const client = await clientPromise;
     const db = client.db("stacktrim");
     const projectObjectId = new ObjectId(projectId);
@@ -27,60 +27,81 @@ export async function POST(request: NextRequest) {
       .findOne({ _id: projectObjectId });
     if (!project) {
       return NextResponse.json(
-        { success: false, message: "Target module not found." },
+        { success: false, message: "Target workspace node not found." },
         { status: 404 },
       );
     }
 
-    const metricsAggregation = await db
-      .collection("metrics")
-      .aggregate([
-        { $match: { projectId: projectObjectId } },
-        {
-          $group: {
-            _id: null,
-            avgExecutionTime: { $avg: "$executionTimeMs" },
-            errorCount: {
-              $sum: { $cond: [{ $eq: ["$isError", true] }, 1, 0] },
-            },
-          },
-        },
-      ])
-      .toArray();
+    // Default monitoring metric assumptions
+    let actualLatencyMs = 0;
+    let externalPayloadSizeText = "0 bytes";
+    let isApiDown = false;
+    let apiHttpStatusCode = 200;
 
-    const stats = metricsAggregation[0] || {
-      avgExecutionTime: 0,
-      errorCount: 0,
-    };
-    const avgLatency = stats.avgExecutionTime || 0;
-    const totalCrashes = stats.errorCount || 0;
+    // 2. LIVE AUDIT GATEWAY LINK FETCH LAYER
+    if (project.apiEndpoint) {
+      try {
+        const startTime = Date.now();
 
-    // 2. Build our clean prompt instruction set
+        // Execute a real network handshake query directly over the live internet lines
+        const externalResponse = await fetch(project.apiEndpoint, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        actualLatencyMs = Date.now() - startTime;
+        apiHttpStatusCode = externalResponse.status;
+
+        if (!externalResponse.ok) {
+          isApiDown = true;
+        }
+
+        // Measure raw response size text length
+        const rawTextData = await externalResponse.text();
+        externalPayloadSizeText = `${new Blob([rawTextData]).size} bytes`;
+      } catch (fetchError: any) {
+        console.error("External Target Ingestion Link Failure:", fetchError);
+        isApiDown = true;
+        actualLatencyMs = 1500; // Simulate timeout delay parameters if the connection drops
+      }
+    }
+
+    // 3. Clean countDocuments query (Completely removes array symbols and backslash issues)
+    const historicalCrashes = await db.collection("metrics").countDocuments({
+      projectId: projectObjectId,
+      isError: true,
+    });
+
+    // 4. Construct a clean prompt context string by appending arrays to avoid backtick glitches
     const aiPrompt = [
       "You are the core engineering module of StackTrim, an AI cloud cost auditor.",
-      "Analyze these live performance log stats for the application named [" +
-        project.name +
-        "]:",
-      "- Cloud Host Provider: " + project.cloudProvider,
-      "- Average Execution Latency: " + Math.round(avgLatency) + "ms",
-      "- Total Serverless Runtime Crashes: " + totalCrashes,
+      "Analyze these REAL-TIME operational audit metrics gathered live from the external target gateway connection:",
+      "- Target Name: " + project.name,
+      "- Connected Ingestion API link: " + project.apiEndpoint,
+      "- Live Request Latency Response Time: " + actualLatencyMs + "ms",
+      "- Live API HTTP Status Code response: " + apiHttpStatusCode,
+      "- External Network Data Payload Size: " + externalPayloadSizeText,
+      "- Database Historical Anomaly Log Detections: " +
+        historicalCrashes +
+        " exceptions",
+      "- Is Endpoint Down: " + isApiDown.toString(),
       "",
       "Respond STRICTLY in a clean, valid JSON format matching this object shape exactly:",
       "{",
-      '  "score": number,',
-      '  "diagnosis": "string",',
-      '  "remediationCode": "string"',
+      '  "score": number (Infrastructure health score from 0 to 100),',
+      '  "diagnosis": "string (A concise engineering summary in simple terms explaining how this real latency and payload size affects cloud billing costs)",',
+      '  "remediationCode": "string (Provide a clean code fix snippet solving network speeds or payload caching parameters)"',
       "}",
-      "Do not include any conversational greeting or trailing chat text. Output only raw JSON.",
+      "Do not include any normal chat text, introductions or markdown code fence wrappers outside of the raw JSON object.",
     ].join("\n");
 
-    // 3. Launch native network call to Groq's high-speed Llama 3 model
+    // 5. Fire the payload up to Groq's high-speed inference cloud models
     const { text } = await generateText({
-      model: groq("openai/gpt-oss-20b"), // Using native groq function selector
+      model: groq("openai/gpt-oss-20b"),
       prompt: aiPrompt,
     });
 
-    // 4. Extract raw JSON block boundaries
+    // 6. Safeguard parser cleanup
     let cleanText = text.trim();
     const firstBrace = cleanText.indexOf("{");
     const lastBrace = cleanText.lastIndexOf("}");
@@ -94,17 +115,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        score: structuredReport.score || 80,
-        diagnosis: structuredReport.diagnosis || "Audit completed.",
+        score: structuredReport.score || 85,
+        diagnosis:
+          structuredReport.diagnosis || "Audit completed successfully.",
         remediationCode:
-          structuredReport.remediationCode || "// System optimal.",
+          structuredReport.remediationCode || "// Core settings optimal.",
       },
       { status: 200 },
     );
   } catch (error: any) {
     console.error("Live AI Network Pipeline Crash:", error);
     return NextResponse.json(
-      { success: false, message: "AI Processing Fault", error: error.message },
+      {
+        success: false,
+        message: "AI Ingestion Processing Fault",
+        error: error.message,
+      },
       { status: 500 },
     );
   }

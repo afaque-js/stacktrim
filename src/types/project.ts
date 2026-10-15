@@ -7,4 +7,5 @@ export interface IProject {
   cloudProvider: "vercel" | "aws" | "netlify"; // Strict union type constraint
   status: "active" | "paused" | "error"; // Tracking state
   createdAt: Date; // Audit timeline tracking
+  apiEndpoint: string; // APi Endpoint
 }

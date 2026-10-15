@@ -1,4 +1,4 @@
-// src/app/page.tsx (Split 1 of 3)
+// src/app/page.tsx (Split 1 of 4)
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,11 +20,23 @@ interface AIDiagnosis {
   remediationCode: string;
 }
 
+interface UserSession {
+  id: string;
+  email: string;
+}
+
 export default function InteractiveDashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Creation Panel States
+  // Active User Authentication Session States
+  const [session, setSession] = useState<UserSession | null>(null);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authForm, setFormDataAuth] = useState({ email: "", password: "" });
+  const [authError, setAuthError] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+
+  // Creation Drawer Panel States
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -39,6 +51,7 @@ export default function InteractiveDashboard() {
   const [aiReport, setAIReport] = useState<AIDiagnosis | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
+  // Fetch registered project arrays from our aggregated endpoint
   async function fetchProjects() {
     try {
       const response = await fetch("/api/projects");
@@ -52,8 +65,58 @@ export default function InteractiveDashboard() {
   }
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (session) {
+      fetchProjects();
+    }
+  }, [session]);
+
+  // Handle User Login and Registration Form Submission
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+
+    if (!authForm.email.trim() || !authForm.password.trim()) {
+      setAuthError("All credentials fields are required.");
+      return;
+    }
+
+    setAuthSubmitting(true);
+    const targetEndpoint =
+      authMode === "login" ? "/api/auth/login" : "/api/auth/register";
+
+    try {
+      const response = await fetch(targetEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(authForm),
+      });
+
+      const json = await response.json();
+
+      if (json.success) {
+        if (authMode === "login") {
+          // Commit session profile data directly to active app context memory state
+          setSession({ id: json.user.id, email: json.user.email });
+          setFormDataAuth({ email: "", password: "" });
+        } else {
+          // If registered successfully, flip instantly to sign-in view mode with a reset form
+          setAuthMode("login");
+          setFormDataAuth({ email: authForm.email, password: "" });
+          setAuthError(
+            "Registration complete! Please enter your password to sign in.",
+          );
+        }
+      } else {
+        setAuthError(
+          json.message || "Authentication transmission layer failed.",
+        );
+      }
+    } catch (err) {
+      setAuthError("Network credentials validation communication crash.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,13 +147,11 @@ export default function InteractiveDashboard() {
     }
   };
 
-  // Trigger Backend AI Audit Pipeline Ingestion Loop
   const handleRunAIAudit = async (project: Project) => {
     setSelectedProject(project);
     setAIReport(null);
     setIsAIPanelOpen(true);
     setLoadingAI(true);
-
     try {
       const response = await fetch("/api/ai-diagnose", {
         method: "POST",
@@ -111,7 +172,119 @@ export default function InteractiveDashboard() {
       setLoadingAI(false);
     }
   };
-  // src/app/page.tsx (Split 2 of 3)
+  // src/app/page.tsx (Split 2 of 4)
+  // SECURITY GATEWAY: If no active user session exists, display the login interface
+  if (!session) {
+    return (
+      <main className="min-h-screen bg-[#FDFBF7] text-stone-800 font-sans antialiased relative overflow-hidden flex flex-col items-center justify-center p-6 selection:bg-orange-200 selection:text-orange-900">
+        {/* Background Decorative Grids */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ea580c05_1px,transparent_1px),linear-gradient(to_bottom,#ea580c05_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-orange-100/40 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10 animate-fadeIn">
+          {/* Platform Branding Logo Accent */}
+          <div className="text-center mb-8">
+            <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-orange-700 uppercase bg-orange-50 border border-orange-200/60 px-2.5 py-0.5 rounded">
+              Infrastructure Control
+            </span>
+            <h1 className="text-4xl font-black mt-3 tracking-tight text-stone-900">
+              STACK<span className="text-orange-600">TRIM</span>
+            </h1>
+            <p className="text-stone-500 mt-2 text-xs font-mono">
+              AGENTIC_SECURE_AUTH_HANDSHAKE
+            </p>
+          </div>
+
+          {/* Secure Interactive Glass Form Panel */}
+          <div className="bg-white border border-orange-100 rounded-3xl p-8 shadow-xl shadow-orange-600/5">
+            <h2 className="text-xl font-black text-stone-900 mb-2 capitalize">
+              {authMode === "login" ? "Welcome Back" : "Create Developer Space"}
+            </h2>
+            <p className="text-xs text-stone-400 mb-6">
+              {authMode === "login"
+                ? "Enter your global security master credentials to mount clusters."
+                : "Register a master profile to provision clean telemetry nodes."}
+            </p>
+
+            <form onSubmit={handleAuthSubmit} className="space-y-5">
+              {authError && (
+                <div
+                  className={`p-3 border rounded-xl text-xs font-semibold font-mono ${
+                    authError.includes("complete")
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                      : "bg-rose-50 border-rose-200 text-rose-700"
+                  }`}
+                >
+                  {authError.includes("complete") ? "SUCCESS // " : "ERROR // "}{" "}
+                  {authError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-2">
+                  Master Email Address
+                </label>
+                <input
+                  type="email"
+                  value={authForm.email}
+                  onChange={(e) =>
+                    setFormDataAuth({ ...authForm, email: e.target.value })
+                  }
+                  placeholder="name@company.com"
+                  className="w-full bg-[#FFFDF9] border border-orange-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 text-stone-800 transition-colors shadow-inner"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-2">
+                  Account Password
+                </label>
+                <input
+                  type="password"
+                  value={authForm.password}
+                  onChange={(e) =>
+                    setFormDataAuth({ ...authForm, password: e.target.value })
+                  }
+                  placeholder="••••••••"
+                  className="w-full bg-[#FFFDF9] border border-orange-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 text-stone-800 transition-colors shadow-inner"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={authSubmitting}
+                className="w-full bg-stone-900 hover:bg-orange-600 text-white rounded-xl py-3.5 text-sm font-bold shadow-md transition-colors disabled:opacity-50 flex items-center justify-center font-mono uppercase tracking-wider"
+              >
+                {authSubmitting
+                  ? "Verifying Identity Link..."
+                  : authMode === "login"
+                    ? "Access Workspace ⚡"
+                    : "Register Node Profile 🛠️"}
+              </button>
+            </form>
+
+            {/* Toggle System View Link */}
+            <div className="mt-6 pt-4 border-t border-stone-50 text-center text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode(authMode === "login" ? "register" : "login");
+                  setAuthError("");
+                }}
+                className="text-stone-500 hover:text-orange-600 font-medium transition-colors underline underline-offset-4"
+              >
+                {authMode === "login"
+                  ? "New to the engine? Initialize account profile"
+                  : "Already registered? Mount existing workspace"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+  // src/app/page.tsx (Split 3 of 5)
+  // PRIMARY DASHBOARD WORKSPACE: Renders seamlessly only when an active user session exists
   return (
     <main className="min-h-screen bg-[#FDFBF7] text-stone-800 font-sans antialiased relative overflow-hidden selection:bg-orange-200 selection:text-orange-900">
       {/* Background Grids */}
@@ -122,9 +295,16 @@ export default function InteractiveDashboard() {
         {/* Header Layout */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-orange-100 pb-10 mb-12">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-orange-700 uppercase bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded">
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-orange-700 uppercase bg-orange-50 border border-orange-200/60 px-2.5 py-0.5 rounded">
                 v1.0.0 Live
+              </span>
+              <span className="text-xs font-mono text-stone-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                Active Account:{" "}
+                <strong className="text-stone-700 font-bold">
+                  {session.email}
+                </strong>
               </span>
             </div>
             <h1 className="text-4xl font-black mt-3 tracking-tight text-stone-900">
@@ -142,7 +322,7 @@ export default function InteractiveDashboard() {
                 Cloud Waste Audit
               </p>
               <p className="text-xl font-black text-stone-900 mt-0.5">
-                \$0.00{" "}
+                $0.00{" "}
                 <span className="text-xs font-normal text-stone-500">
                   saved
                 </span>
@@ -161,9 +341,16 @@ export default function InteractiveDashboard() {
                 critical
               </p>
             </div>
+            <div className="w-[1px] h-8 bg-orange-100" />
+            <button
+              onClick={() => setSession(null)}
+              className="px-3 py-1.5 bg-stone-50 hover:bg-rose-50 border border-stone-200 text-stone-500 hover:text-rose-600 font-mono text-[10px] font-bold rounded-lg transition-colors uppercase tracking-wider"
+            >
+              Logout ✕
+            </button>
           </div>
         </header>
-
+        {/* src/app/page.tsx (Split 4 of 5) */}
         {/* Dashboard Clusters Container */}
         <section>
           <div className="flex items-center justify-between mb-8">
@@ -309,6 +496,7 @@ export default function InteractiveDashboard() {
             </div>
           )}
         </section>
+        {/* src/app/page.tsx (Split 5 of 6) */}
         {/* ========================================================= */}
         {/* INTERACTIVE FORM DRAWER POPUP PANEL (RIGHT SLIDE)        */}
         {/* ========================================================= */}
@@ -395,6 +583,7 @@ export default function InteractiveDashboard() {
             </div>
           </div>
         </div>
+        {/* src/app/page.tsx (Split 6 of 6) */}
         {/* ========================================================= */}
         {/* ADVANCED AI DIAGNOSTIC TERMINAL PANEL (LEFT SLIDE)       */}
         {/* ========================================================= */}

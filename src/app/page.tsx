@@ -41,6 +41,7 @@ export default function InteractiveDashboard() {
   const [formData, setFormData] = useState({
     name: "",
     cloudProvider: "vercel",
+    apiEndpoint: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -121,8 +122,10 @@ export default function InteractiveDashboard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    if (!formData.name.trim()) {
-      setFormError("Application name is required.");
+    if (!formData.name.trim() || !formData.apiEndpoint.trim()) {
+      setFormError(
+        "Both application identifier and live API gateway paths are required.",
+      );
       return;
     }
     setSubmitting(true);
@@ -534,6 +537,8 @@ export default function InteractiveDashboard() {
                     ERROR // {formError}
                   </div>
                 )}
+
+                {/* Field 1: Isolated Application Identifier Name Section */}
                 <div>
                   <label className="block text-xs font-mono font-bold text-stone-500 uppercase tracking-wider mb-2">
                     Application Identifier Name
@@ -548,6 +553,27 @@ export default function InteractiveDashboard() {
                     className="w-full bg-[#FFFDF9] border border-orange-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 text-stone-800 transition-colors shadow-inner"
                   />
                 </div>
+
+                {/* Field 2: Isolated Live External Telemetry API Gateway URL Section */}
+                <div>
+                  <label className="block text-xs font-mono font-bold text-stone-500 uppercase tracking-wider mb-2">
+                    Live External Telemetry API Gateway URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.apiEndpoint}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        apiEndpoint: e.target.value,
+                      })
+                    }
+                    placeholder="https://wheretheiss.at"
+                    className="w-full bg-[#FFFDF9] border border-orange-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 text-stone-800 transition-colors shadow-inner"
+                  />
+                </div>
+
+                {/* Field 3: Isolated Cloud Core Infrastructure Host Section */}
                 <div>
                   <label className="block text-xs font-mono font-bold text-stone-500 uppercase tracking-wider mb-2">
                     Cloud Core Infrastructure Host
@@ -567,6 +593,8 @@ export default function InteractiveDashboard() {
                     <option value="netlify">Netlify Edge Serverless</option>
                   </select>
                 </div>
+
+                {/* Action Trigger Button */}
                 <button
                   type="submit"
                   disabled={submitting}

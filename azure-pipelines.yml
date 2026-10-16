@@ -1,0 +1,27 @@
+# Node.js
+# Build a general Node.js project with npm.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - script: |
+      # Inform the shell to use Node Version Manager (nvm)
+      . $NVM_DIR/nvm.sh
+      
+      # Install and switch to Node 22 explicitly
+      nvm install 22
+      nvm use 22
+      
+      # Verify the version is correct before building
+      node -v
+      
+      # Run your Next.js installation and build
+      npm install
+      npm run build
+    displayName: 'Force Node 22, Install, and Build Next.js app'

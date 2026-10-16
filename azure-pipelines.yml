@@ -11,17 +11,12 @@ pool:
 
 steps:
   - script: |
-      # Inform the shell to use Node Version Manager (nvm)
       . $NVM_DIR/nvm.sh
-      
-      # Install and switch to Node 22 explicitly
       nvm install 22
       nvm use 22
-      
-      # Verify the version is correct before building
-      node -v
-      
-      # Run your Next.js installation and build
       npm install
       npm run build
     displayName: 'Force Node 22, Install, and Build Next.js app'
+    env:
+      # This securely maps your secret dashboard variable into the build process
+      MONGODB_URI: $(MONGODB_URI)

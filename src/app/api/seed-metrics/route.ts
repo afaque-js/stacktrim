@@ -89,13 +89,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Seeding Engine Error:", error);
     return NextResponse.json(
       {
         success: false,
         message: "Internal Seeding Layer Crash",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );

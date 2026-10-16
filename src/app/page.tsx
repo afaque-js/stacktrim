@@ -1,7 +1,7 @@
 // src/app/page.tsx (Split 1 of 4)
 "use client";
 
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 interface Project {
   _id: string;
@@ -52,27 +52,35 @@ export default function InteractiveDashboard() {
   const [aiReport, setAIReport] = useState<AIDiagnosis | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
-  // Fetch registered project arrays from our aggregated endpoint
-  async function fetchProjects() {
-    try {
-      const response = await fetch("/api/projects");
-      const json = await response.json();
-      if (json.success) setProjects(json.data);
-    } catch (error) {
-      console.error("System Error:", error);
-    } finally {
-      setLoading(false);
-    }
+  async function fetchProjects(signal?: AbortSignal) {
+    const response = await fetch("/api/projects", { signal });
+    return response.json();
   }
 
   useEffect(() => {
-    if (session) {
-      fetchProjects();
+    if (!session?.id) return;
+
+    const controller = new AbortController();
+
+    async function loadProjects() {
+      try {
+        const json = await fetchProjects(controller.signal);
+        if (json.success) setProjects(json.data);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("System Error:", error);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     }
-  }, [session]);
+
+    void loadProjects();
+    return () => controller.abort();
+  }, [session?.id]);
 
   // Handle User Login and Registration Form Submission
-  const handleAuthSubmit = async (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setAuthError("");
 
@@ -112,39 +120,54 @@ export default function InteractiveDashboard() {
           json.message || "Authentication transmission layer failed.",
         );
       }
-    } catch (err) {
+    } catch {
       setAuthError("Network credentials validation communication crash.");
     } finally {
       setAuthSubmitting(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setFormError("");
-    if (!formData.name.trim() || !formData.apiEndpoint.trim()) {
-      setFormError(
-        "Both application identifier and live API gateway paths are required.",
-      );
+
+    const name = formData.name.trim();
+    const apiEndpoint = formData.apiEndpoint.trim();
+    if (!name || !apiEndpoint) {
+      setFormError("Both the project name and API endpoint are required.");
       return;
     }
+
     setSubmitting(true);
     try {
       const response = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          name,
+          apiEndpoint,
+        }),
       });
-      const json = await response.json();
-      if (json.success) {
-        setFormData({ name: "", cloudProvider: "vercel", apiEndpoint: "" });
-        setIsPanelOpen(false);
-        fetchProjects();
-      } else {
-        setFormError(json.message || "Failed to save cluster.");
+
+      const result: { success?: boolean; message?: string } =
+        await response.json();
+      if (!response.ok || !result.success) {
+        setFormError(result.message || "Failed to create the project.");
+        return;
       }
-    } catch (err) {
-      setFormError("Network communication layer error.");
+
+      setFormData({ name: "", cloudProvider: "vercel", apiEndpoint: "" });
+      setIsPanelOpen(false);
+      try {
+        const projectsJson = await fetchProjects();
+        if (projectsJson.success) setProjects(projectsJson.data);
+      } catch (error) {
+        console.error("Failed to refresh projects after creation:", error);
+      }
+    } catch (error) {
+      console.error("Project creation failed:", error);
+      setFormError("Unable to create the project. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -630,7 +653,7 @@ export default function InteractiveDashboard() {
                 <div>
                   <h3 className="text-lg font-black text-stone-900">
                     AI Remediation Engine{" "}
-                    <span className="text-orange-600">// Audit</span>
+                    <span className="text-orange-600">{" // Audit"}</span>
                   </h3>
                   <p className="text-xs text-stone-400 mt-0.5 font-mono">
                     TARGET: {selectedProject?.name || "Unknown Cluster"}

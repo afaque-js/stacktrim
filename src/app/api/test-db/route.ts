@@ -22,7 +22,7 @@ export async function GET() {
       mongodbVersion: serverStatus.version,
       activeConnections: serverStatus.connections.current,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Database connection error:", error);
 
     // 5. Return a structured error response if the connection fails
@@ -30,7 +30,7 @@ export async function GET() {
       {
         success: false,
         message: "Failed to connect to the database.",
-        error: error.message || "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     );

@@ -7,7 +7,7 @@ trigger:
   - main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: "ubuntu-latest"
 
 steps:
   # 1. Force the correct engineering environment
@@ -16,14 +16,14 @@ steps:
       nvm install 22
       nvm use 22
       npm install
-    displayName: 'Initialize Node 22 and Install Workspace Dependencies'
+    displayName: "Initialize Node 22 and Install Workspace Dependencies"
 
   # 2. Strict Code Quality Gate
   - script: |
       . $NVM_DIR/nvm.sh
       nvm use 22
       npm run lint
-    displayName: 'Execute Strict ESLint Code Style Analysis'
+    displayName: "Execute Strict ESLint Code Style Analysis"
 
   # 3. Security Vulnerability Assessment
   - script: |
@@ -31,15 +31,13 @@ steps:
       nvm use 22
       # Checks for security flaws. It will pass warnings but let you see them in logs.
       npm audit --audit-level=high
-    displayName: 'Audit Third-Party Package Security Signatures'
-    continueOnError: true
+    displayName: "Audit Third-Party Package Security Signatures"
 
   # 4. Final Production Compilation
   - script: |
       . $NVM_DIR/nvm.sh
       nvm use 22
       npm run build
-    displayName: 'Compile Production-Grade Next.js Assets'
+    displayName: "Compile Production-Grade Next.js Assets"
     env:
       MONGODB_URI: $(MONGODB_URI)
-

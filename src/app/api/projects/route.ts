@@ -1,7 +1,6 @@
 // src/app/api/projects/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { IProject } from "@/types/project";
 
 // This handler listens for incoming POST requests to save a new cloud application
 // Update the POST handler function inside src/app/api/projects/route.ts
@@ -45,13 +44,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API Project Creation Error:", error);
     return NextResponse.json(
       {
         success: false,
         message: "Internal Server Error",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );
@@ -112,13 +111,13 @@ export async function GET() {
       count: projectsWithMetrics.length,
       data: projectsWithMetrics,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Aggregation Pipeline Error:", error);
     return NextResponse.json(
       {
         success: false,
         message: "Internal Server Error",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );

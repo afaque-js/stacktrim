@@ -60,13 +60,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Login Pipeline Fault:", error);
     return NextResponse.json(
       {
         success: false,
         message: "Internal Authentication Layer Crash",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );

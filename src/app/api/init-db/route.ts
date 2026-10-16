@@ -19,13 +19,13 @@ export async function GET() {
       success: true,
       message: "Database unique user indexes provisioned successfully!",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Database initialization crash:", error);
     return NextResponse.json(
       {
         success: false,
         message: "Failed to initialize index.",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         // Measure raw response size text length
         const rawTextData = await externalResponse.text();
         externalPayloadSizeText = `${new Blob([rawTextData]).size} bytes`;
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         console.error("External Target Ingestion Link Failure:", fetchError);
         isApiDown = true;
         actualLatencyMs = 1500; // Simulate timeout delay parameters if the connection drops
@@ -123,13 +123,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Live AI Network Pipeline Crash:", error);
     return NextResponse.json(
       {
         success: false,
         message: "AI Ingestion Processing Fault",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );

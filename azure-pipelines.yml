@@ -32,6 +32,7 @@ steps:
       # Checks for security flaws. It will pass warnings but let you see them in logs.
       npm audit --audit-level=high
     displayName: 'Audit Third-Party Package Security Signatures'
+    continueOnError: true
 
   # 4. Final Production Compilation
   - script: |

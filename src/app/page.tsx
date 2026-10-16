@@ -137,7 +137,7 @@ export default function InteractiveDashboard() {
       });
       const json = await response.json();
       if (json.success) {
-        setFormData({ name: "", cloudProvider: "vercel" });
+        setFormData({ name: "", cloudProvider: "vercel", apiEndpoint: "" });
         setIsPanelOpen(false);
         fetchProjects();
       } else {
